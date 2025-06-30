@@ -4,9 +4,10 @@
   "main": "src/index.ts",
   "compatibility_date": "2025-06-29",
   "vars": {
+    // feel these with your own values
     "TELEGRAM_BOT_TOKEN": "",
     "ALLOWED_USER_IDS": "",
-    "WEBHOOK_SECRET": ""
+    "WEBHOOK_SECRET": "" 
   },
     "observability": {
       "enabled": true,
