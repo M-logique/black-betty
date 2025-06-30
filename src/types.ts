@@ -141,6 +141,7 @@ export interface MessageHandler {
   name: string
   canHandle: (message: TelegramMessage) => boolean
   handle: (message: TelegramMessage, bot: TelegramBot) => Promise<void>
+  requiredAuth?: boolean
 }
 
 // Inline query handler interface
@@ -148,6 +149,7 @@ export interface InlineQueryHandler {
   name: string
   canHandle: (query: TelegramInlineQuery) => boolean
   handle: (query: TelegramInlineQuery, bot: TelegramBot) => Promise<void>
+  requiredAuth?: boolean
 }
 
 // Callback query handler interface
@@ -155,6 +157,7 @@ export interface CallbackQueryHandler {
   name: string
   canHandle: (callbackQuery: TelegramCallbackQuery) => boolean
   handle: (callbackQuery: TelegramCallbackQuery, bot: TelegramBot) => Promise<void>
+  requiredAuth?: boolean
 }
 
 export interface TelegramInlineQueryResult {

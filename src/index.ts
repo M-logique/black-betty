@@ -19,27 +19,42 @@ class HandlerRegistry {
     this.callbackHandlers.push(handler)
   }
 
-  async processMessage(message: TelegramMessage, bot: TelegramBot) {
+  async processMessage(message: TelegramMessage, bot: TelegramBot, allowedIds: number[]) {
     for (const handler of this.handlers) {
       if (handler.canHandle(message)) {
+        if (handler.requiredAuth !== false) {
+          if (!message.from || !allowedIds.includes(message.from.id)) {
+            return
+          }
+        }
         await handler.handle(message, bot)
-        break // Only execute first matching handler
+        break
       }
     }
   }
 
-  async processInlineQuery(query: TelegramInlineQuery, bot: TelegramBot) {
+  async processInlineQuery(query: TelegramInlineQuery, bot: TelegramBot, allowedIds: number[]) {
     for (const handler of this.inlineHandlers) {
       if (handler.canHandle(query)) {
+        if (handler.requiredAuth !== false) {
+          if (!query.from || !allowedIds.includes(query.from.id)) {
+            return
+          }
+        }
         await handler.handle(query, bot)
         break // Only execute first matching handler
       }
     }
   }
 
-  async processCallbackQuery(callbackQuery: TelegramCallbackQuery, bot: TelegramBot) {
+  async processCallbackQuery(callbackQuery: TelegramCallbackQuery, bot: TelegramBot, allowedIds: number[]) {
     for (const handler of this.callbackHandlers) {
       if (handler.canHandle(callbackQuery)) {
+        if (handler.requiredAuth !== false) {
+          if (!callbackQuery.from || !allowedIds.includes(callbackQuery.from.id)) {
+            return
+          }
+        }
         await handler.handle(callbackQuery, bot)
         break // Only execute first matching handler
       }
@@ -69,19 +84,15 @@ app.post('/webhook', async (c) => {
     // Load handlers dynamically
     await loadHandlers(registry)
     
+    const allowedIds = c.env.ALLOWED_USER_IDS.split(',').map(id => parseInt(id.trim()))
     // Handle different types of updates
     if (update.message) {
       const message = update.message
       if (message.chat.type !== 'private') return c.json({ ok: true })
       
-      // Check if user is allowed
-      const allowedIds = c.env.ALLOWED_USER_IDS.split(',').map(id => parseInt(id.trim()))
-      if (!message.from || !allowedIds.includes(message.from.id)) {
-        return c.json({ ok: true })
-      }
       
       try {
-        await registry.processMessage(message, bot)
+        await registry.processMessage(message, bot, allowedIds)
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error)
         console.error('Message handler error:', error)
@@ -97,14 +108,9 @@ app.post('/webhook', async (c) => {
     if (update.inline_query) {
       const query = update.inline_query
       
-      // Check if user is allowed for inline queries too
-      const allowedIds = c.env.ALLOWED_USER_IDS.split(',').map(id => parseInt(id.trim()))
-      if (!allowedIds.includes(query.from.id)) {
-        return c.json({ ok: true })
-      }
       
       try {
-        await registry.processInlineQuery(query, bot)
+        await registry.processInlineQuery(query, bot, allowedIds)
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error)
         console.error('Inline query handler error:', error)
@@ -126,14 +132,9 @@ app.post('/webhook', async (c) => {
     if (update.callback_query) {
       const callbackQuery = update.callback_query
       
-      // Check if user is allowed for callback queries too
-      const allowedIds = c.env.ALLOWED_USER_IDS.split(',').map(id => parseInt(id.trim()))
-      if (!allowedIds.includes(callbackQuery.from.id)) {
-        return c.json({ ok: true })
-      }
       
       try {
-        await registry.processCallbackQuery(callbackQuery, bot)
+        await registry.processCallbackQuery(callbackQuery, bot, allowedIds)
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error)
         console.error('Callback query handler error:', error)
@@ -183,10 +184,12 @@ async function loadHandlers(registry: HandlerRegistry) {
   // Load inline query handlers manually
   const { inlineNotesGet, inlineNotesSet } = await import('./handlers/notes')
   const { inlineCalculatorHandler } = await import('./handlers/inline-calculator')
-  
+  const { defaultInlineHandler } = await import('./handlers/default-inline')
+
   registry.registerInline(inlineNotesGet)
   registry.registerInline(inlineNotesSet)
   registry.registerInline(inlineCalculatorHandler)
+  registry.registerInline(defaultInlineHandler)
   
   // Load callback query handlers manually
   const { callbackNotesDelete, callbackNotesCreate } = await import('./handlers/notes')

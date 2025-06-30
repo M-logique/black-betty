@@ -5,5 +5,6 @@ export const startHandler: MessageHandler = {
   canHandle: (message: TelegramMessage) => message.text?.startsWith('/start') ?? false,
   handle: async (message: TelegramMessage, bot: TelegramBot) => {
     await bot.sendMessage(message.chat.id, 'Hello!')
-  }
+  }, 
+  requiredAuth: false
 }

@@ -224,6 +224,7 @@ export const callbackNotesCreate: CallbackQueryHandler = {
             }
         }
     },
+    requiredAuth: true
 }
 
 function nanoid(size: number = 8) {
