@@ -167,5 +167,7 @@ export const inlineCalculatorHandler: InlineQueryHandler = {
       
       await bot.answerInlineQuery(query.id, results)
     }
-  }
+  },
+  requiredAuth: false
 }
+
