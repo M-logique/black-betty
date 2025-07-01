@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { TelegramBot, TelegramMessage, MessageHandler, TelegramUpdate, TelegramInlineQuery, InlineQueryHandler, TelegramCallbackQuery, CallbackQueryHandler, CloudflareBindings } from './types'
+import { TelegramBot, TelegramMessage, MessageHandler, TelegramUpdate, TelegramInlineQuery, InlineQueryHandler, TelegramCallbackQuery, CallbackQueryHandler, CloudflareBindings, GithubPayload } from './types'
 
 // Handler registry
 class HandlerRegistry {
@@ -182,20 +182,129 @@ async function loadHandlers(registry: HandlerRegistry) {
   registry.register(startHandler)
   
   // Load inline query handlers manually
-  const { inlineNotesGet, inlineNotesSet } = await import('./handlers/notes')
   const { inlineCalculatorHandler } = await import('./handlers/inline-calculator')
   const { defaultInlineHandler } = await import('./handlers/default-inline')
 
-  registry.registerInline(inlineNotesGet)
-  registry.registerInline(inlineNotesSet)
   registry.registerInline(inlineCalculatorHandler)
   registry.registerInline(defaultInlineHandler)
   
   // Load callback query handlers manually
-  const { callbackNotesDelete, callbackNotesCreate } = await import('./handlers/notes')
-  
-  registry.registerCallback(callbackNotesDelete)
-  registry.registerCallback(callbackNotesCreate)
 }
+
+app.post("/github/:chatId", async (c) => {
+  const chatId = c.req.param('chatId')
+  const event = c.req.header('X-GitHub-Event') ?? ""
+  var additionals: any = {}
+
+  switch (event) {
+    case 'push':
+      const payload: GithubPayload = await c.req.json()
+      const bot = new TelegramBot(c.env.TELEGRAM_BOT_TOKEN, c)
+      var message: string = `🚀 *Push to* **[${escapeMarkdown(payload.repository.full_name)}](${escapeMarkdown(payload.repository.html_url)})**\n`
+
+      var sender: string = "Unknown"
+
+      if (payload.sender && payload.sender?.html_url) {
+        sender = `[${escapeMarkdown(payload.sender?.login)}](${escapeMarkdown(payload.sender?.html_url)})`
+      } else if (payload.sender) {
+        sender = escapeMarkdown(payload.sender?.login)
+      }
+
+      message += `👨‍🌾 *from*: **${sender}**\n\n`
+
+
+      const totalCommits: number = payload.commits?.length ?? 0
+
+      message += `total **${totalCommits}** commit${(totalCommits > 1 && "s") || ""} on **${payload.ref}**\n`
+      if (payload.commits) {
+        for (const commit of payload.commits.slice(0, 7)) {
+          message += ` \\- **[\\[${escapeMarkdown(commit.id.slice(0, 7))}\\]](${escapeMarkdown(commit.url)})**: [${escapeMarkdown(commit.author.username ?? commit.author.name)}] \`${escapeMarkdown(cutDownText(commit.message))}\`\n`
+        }
+      }
+
+      if (totalCommits > 7) {
+        message += ` \\- And ${totalCommits - 7} more\n`
+      }
+
+      if (payload.compare) {
+        message += `\n 🔍 [Compare Changes](${payload.compare})`
+      }
+      
+      const response = await bot.sendMessage(Number(chatId), message, "MarkdownV2", true)
+      if (response) {
+        additionals["telegramResponse"] = response
+      }
+      break
+    default:
+      break
+  }
+
+  return c.json({ ok: true, event: event, additionals: additionals})
+})
+
+// app.post("/git/:chatId", async (c) => {
+//   const chatId = c.req.param('chatId')
+//   const event = c.req.header('X-GitHub-Event') ?? ""
+//   var response
+
+//   switch (event) {
+//     case 'push':
+//       const payload: GithubPayload = await c.req.json()
+//       const bot = new TelegramBot(c.env.TELEGRAM_BOT_TOKEN, c)
+//       var message = `\\-\\> Push to [${escapeMarkdown(payload.repository.full_name)}](${escapeMarkdown(payload.repository.html_url)})\n`
+//       if (payload.commits) {
+//         for (const commit of payload.commits) {
+//           message += `\\- [${escapeMarkdown(commit.id.slice(0, 7))}](${escapeMarkdown(commit.url)}): \`${escapeMarkdown(commit.message)}\`\n`
+//         }
+//       }
+//       if (payload.compare) {
+//         message += `[Compare Changes](${payload.compare})`
+//       }
+//       // message = escapeMarkdown(message)
+       
+//       response = await bot.sendMessage(Number(chatId), message, "MarkdownV2")
+//       // c.json({ ok: true, event: event, messageId: response.result?.message_id, response: response })
+//       break
+//     default:
+//       break
+//   }
+
+//   return c.json({ ok: true, event: event, telegramResponse: response ?? null})
+
+// })
+
+function escapeMarkdown(text: string) {
+  return text
+    .replace(/_/g, '\\_')
+    .replace(/\*/g, '\\*')
+    .replace(/\[/g, '\\[')
+    .replace(/\]/g, '\\]')
+    .replace(/\(/g, '\\(')
+    .replace(/\)/g, '\\)')
+    .replace(/~/g, '\\~')
+    .replace(/`/g, '\\`')
+    .replace(/>/g, '\\>')
+    .replace(/#/g, '\\#')
+    .replace(/\+/g, '\\+')
+    .replace(/-/g, '\\-')
+    .replace(/=/g, '\\=')
+    .replace(/\|/g, '\\|')
+    .replace(/\{/g, '\\{')
+    .replace(/\}/g, '\\}')
+    .replace(/\./g, '\\.')
+    .replace(/!/g, '\\!');
+}
+
+function cutDownText(text: string) {
+  var cuttedText = text.split("\n")[0].slice(0, 100)
+  if (cuttedText !== text) {
+    cuttedText+= "..."
+  }
+  return cuttedText
+}
+
+app.notFound((c) => {
+  return c.text(`${c.req.method} - ${c.req.path} not found (404)`, 404)
+})
 
 export default app
