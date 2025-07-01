@@ -12,12 +12,5 @@
     "observability": {
       "enabled": true,
       "head_sampling_rate": 1
-    },
-
-    "kv_namespaces": [
-      {
-        "binding": "NOTES",
-        "id": "" // create a kv named NOTES and replace this with its id
-      }
-    ],
+    }
 }

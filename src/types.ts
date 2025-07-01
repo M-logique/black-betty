@@ -5,7 +5,6 @@ export interface CloudflareBindings {
   TELEGRAM_BOT_TOKEN: string
   ALLOWED_USER_IDS: string
   WEBHOOK_SECRET: string
-  NOTES: KVNamespace
 }
 
 // Types for Telegram Bot API
@@ -71,9 +70,10 @@ export class TelegramBot {
     return response.json()
   }
 
-  async sendMessage(chatId: number, text: string, parseMode?: string): Promise<any> {
+  async sendMessage(chatId: number, text: string, parseMode?: string, disableWebPagePreview?: boolean): Promise<any> {
     const body: any = { chat_id: chatId, text }
     if (parseMode) body.parse_mode = parseMode
+    if (disableWebPagePreview !== undefined) body.disable_web_page_preview = disableWebPagePreview
     
     const response = await fetch(`${this.baseUrl}/sendMessage`, {
       method: 'POST',
@@ -175,4 +175,71 @@ export interface TelegramInlineQueryResult {
       callback_data: string
     }>>
   }
+}
+
+export interface GithubUser {
+  name: string
+  email: string
+  login: string
+  id: number
+  avatar_url: number
+  type: string
+  user_view_type: string
+  html_url?: string
+}
+
+export interface GithubCommitter {
+  username?: string
+  email: string
+  name: string
+}
+
+export interface GithubCommit {
+  id: string
+  tree_id: string
+  distinct: boolean
+  message: string
+  timestamp: string
+  url: string
+  author: GithubCommitter
+  committer: GithubCommitter
+  added: string[]
+  removed: string[]
+}
+
+export interface GithubPayload {
+  ref: string
+  before?: string
+  after?: string
+  created?: boolean
+  deleted?: boolean
+  forced?: boolean
+  base_ref?: string
+  head_commit?: GithubCommit
+  commits?: GithubCommit[]
+  repository: GithubRepository
+  pusher?: GithubCommitter
+  sender?: GithubUser
+  compare?: string
+  action?: string
+  changes?: {
+    default_branch?: {
+      from?: string
+    }
+  }
+}
+
+export interface GithubRepository {
+  owner: GithubUser
+  name: string
+  full_name: string
+  private: boolean
+  description: string
+  fork: boolean
+  url: string
+  html_url: string
+  size: number
+  language?: string
+  master_branch?: string
+  default_branch?: string
 }
