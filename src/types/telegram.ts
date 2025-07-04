@@ -1,11 +1,5 @@
 import { Context } from "hono"
-
-// Types for Cloudflare Workers bindings
-export interface CloudflareBindings {
-  TELEGRAM_BOT_TOKEN: string
-  ALLOWED_USER_IDS: string
-  WEBHOOK_SECRET: string
-}
+import { CloudflareBindings } from "./cloudflare"
 
 // Types for Telegram Bot API
 export interface TelegramMessage {
@@ -131,6 +125,15 @@ export class TelegramBot {
     return response.json()
   }
 
+  async getChatMember(chatId: number, userId: number): Promise<any> {
+    const response = await fetch(`${this.baseUrl}/getChatMember?chat_id=${chatId}&user_id=${userId}`)
+    return response.json()
+  }
+  async getMe(): Promise<any> {
+    const response = await fetch(`${this.baseUrl}/getMe`)
+    return response.json()
+  }
+
   getToken(): string {
     return this.token
   }
@@ -177,69 +180,3 @@ export interface TelegramInlineQueryResult {
   }
 }
 
-export interface GithubUser {
-  name: string
-  email: string
-  login: string
-  id: number
-  avatar_url: number
-  type: string
-  user_view_type: string
-  html_url?: string
-}
-
-export interface GithubCommitter {
-  username?: string
-  email: string
-  name: string
-}
-
-export interface GithubCommit {
-  id: string
-  tree_id: string
-  distinct: boolean
-  message: string
-  timestamp: string
-  url: string
-  author: GithubCommitter
-  committer: GithubCommitter
-  added: string[]
-  removed: string[]
-}
-
-export interface GithubPayload {
-  ref: string
-  before?: string
-  after?: string
-  created?: boolean
-  deleted?: boolean
-  forced?: boolean
-  base_ref?: string
-  head_commit?: GithubCommit
-  commits?: GithubCommit[]
-  repository: GithubRepository
-  pusher?: GithubCommitter
-  sender?: GithubUser
-  compare?: string
-  action?: string
-  changes?: {
-    default_branch?: {
-      from?: string
-    }
-  }
-}
-
-export interface GithubRepository {
-  owner: GithubUser
-  name: string
-  full_name: string
-  private: boolean
-  description: string
-  fork: boolean
-  url: string
-  html_url: string
-  size: number
-  language?: string
-  master_branch?: string
-  default_branch?: string
-}

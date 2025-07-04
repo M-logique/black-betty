@@ -1,4 +1,4 @@
-import { InlineQueryHandler, TelegramBot, TelegramInlineQuery, TelegramInlineQueryResult } from '../types'
+import { InlineQueryHandler, TelegramBot, TelegramInlineQuery, TelegramInlineQueryResult } from '../types/telegram'
 
 // Safe math expression evaluator
 class SafeCalculator {
