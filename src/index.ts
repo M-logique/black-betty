@@ -1,5 +1,14 @@
 import { Hono } from 'hono'
-import { TelegramBot, TelegramMessage, MessageHandler, TelegramUpdate, TelegramInlineQuery, InlineQueryHandler, TelegramCallbackQuery, CallbackQueryHandler, CloudflareBindings, GithubPayload } from './types'
+import { TelegramBot,
+   TelegramMessage, 
+   MessageHandler,
+   TelegramUpdate, 
+   TelegramInlineQuery, 
+   InlineQueryHandler, 
+   TelegramCallbackQuery, 
+   CallbackQueryHandler } from './types/telegram'
+import { CloudflareBindings } from './types/cloudflare'
+import { GithubPayload } from './types/github'
 
 // Handler registry
 class HandlerRegistry {
@@ -36,6 +45,7 @@ class HandlerRegistry {
   async processInlineQuery(query: TelegramInlineQuery, bot: TelegramBot, allowedIds: number[]) {
     for (const handler of this.inlineHandlers) {
       if (handler.canHandle(query)) {
+
         if (handler.requiredAuth !== false) {
           if (!query.from || !allowedIds.includes(query.from.id)) {
             return
@@ -180,6 +190,7 @@ async function loadHandlers(registry: HandlerRegistry) {
   const { startHandler } = await import('./handlers/start')
   
   registry.register(startHandler)
+  // registry.register(setGroupHandler)
   
   // Load inline query handlers manually
   const { inlineCalculatorHandler } = await import('./handlers/inline-calculator')
@@ -187,28 +198,33 @@ async function loadHandlers(registry: HandlerRegistry) {
 
   registry.registerInline(inlineCalculatorHandler)
   registry.registerInline(defaultInlineHandler)
+
   
   // Load callback query handlers manually
 }
 
-app.post("/github/:chatId", async (c) => {
+app.post("/github/:botToken/:chatId", async (c) => {
+  const botToken = c.req.param('botToken')
   const chatId = c.req.param('chatId')
   const event = c.req.header('X-GitHub-Event') ?? ""
   var additionals: any = {}
+  const payload: GithubPayload = await c.req.json()
+  const bot = new TelegramBot(botToken, c)
+
+  var sender: string = "Unknown"
+
+  if (payload.sender && payload.sender?.html_url) {
+    sender = `[${escapeMarkdown(payload.sender?.login)}](${escapeMarkdown(payload.sender?.html_url)})`
+  } else if (payload.sender) {
+    sender = escapeMarkdown(payload.sender?.login)
+  }
+
+  const repo = `[${escapeMarkdown(payload.repository.full_name)}](${escapeMarkdown(payload.repository.html_url)})`
 
   switch (event) {
     case 'push':
-      const payload: GithubPayload = await c.req.json()
-      const bot = new TelegramBot(c.env.TELEGRAM_BOT_TOKEN, c)
+      if (payload.ref.includes("refs/tags")) break  ;
       var message: string = `🚀 *Push to* **[${escapeMarkdown(payload.repository.full_name)}](${escapeMarkdown(payload.repository.html_url)})**\n`
-
-      var sender: string = "Unknown"
-
-      if (payload.sender && payload.sender?.html_url) {
-        sender = `[${escapeMarkdown(payload.sender?.login)}](${escapeMarkdown(payload.sender?.html_url)})`
-      } else if (payload.sender) {
-        sender = escapeMarkdown(payload.sender?.login)
-      }
 
       message += `👨‍🌾 *from*: **${sender}**\n\n`
 
@@ -230,13 +246,132 @@ app.post("/github/:chatId", async (c) => {
         message += `\n 🔍 [Compare Changes](${payload.compare})`
       }
       
-      const response = await bot.sendMessage(Number(chatId), message, "MarkdownV2", true)
-      if (response) {
-        additionals["telegramResponse"] = response
+      const pushResponse = await bot.sendMessage(Number(chatId), message, "MarkdownV2", true)
+      if (pushResponse) {
+        additionals["telegramResponse"] = pushResponse
+        additionals["message"] = message
       }
       break
-    default:
+    
+    case "star":
+      const action: string = payload.action === "created" ? "added" : "removed";
+      const idk: string = payload.action === "created" ? "to" : "from";
+
+
+      var message: string = `⭐ ${sender} **${action}** a star ${idk} ${repo}`
+      const starResponse = await bot.sendMessage(Number(chatId), message, "MarkdownV2", true)
+      if (starResponse) {
+        additionals["telegramResponse"] = starResponse
+        additionals["message"] = message
+      }
       break
+
+      case "delete":
+        var message: string = `💀 *Delete* **${escapeMarkdown(payload.ref)}** by **${sender}**\n`
+        const deleteResponse = await bot.sendMessage(Number(chatId), message, "MarkdownV2", true)
+        if (deleteResponse) {
+          additionals["telegramResponse"] = deleteResponse
+          additionals["message"] = message
+        }
+        break
+    
+    case "pull_request":
+      const pullRequest = payload.pull_request
+      const prUrl = escapeMarkdown(pullRequest?.html_url ?? "")
+      var message: string = `🔄 [Pull Request](${prUrl}) ${payload.action ?? ""} **${escapeMarkdown(pullRequest?.title ?? "")}** by **${sender}** on ${repo}\n`
+
+      if (pullRequest?.body) {
+        message += `\n\n\`\`\`${escapeMarkdown(pullRequest?.body.slice(0, 1000))}\`\`\``
+        if (pullRequest?.body.length > 1000) {
+          message += `\n\n[View Full Pull Request](${escapeMarkdown(pullRequest?.html_url ?? "")})`
+        }
+      }
+
+      const pullRequestResponse = await bot.sendMessage(Number(chatId), message, "MarkdownV2", true)
+      if (pullRequestResponse) {
+        additionals["telegramResponse"] = pullRequestResponse
+        additionals["message"] = message
+      }
+      break
+    case "fork":
+      var message: string = `🔄 ${sender} created a [fork](${escapeMarkdown(payload.forkee?.html_url ?? "")}) from ${repo}`
+      const forkResponse = await bot.sendMessage(Number(chatId), message, "MarkdownV2", true)
+      if (forkResponse) {
+        additionals["telegramResponse"] = forkResponse
+        additionals["message"] = message
+      }
+      break
+    case "issues":
+      const issue = payload.issue
+      var message: string = `🔄 Issue [${escapeMarkdown(issue?.title ?? "")}](${escapeMarkdown(issue?.html_url ?? "")}) ${payload.action ?? ""} by **${sender}** on ${repo}\n`
+
+      
+      if (payload.action === "opened") {
+        if (issue?.body) {
+          message += `\n\n\`\`\`\n${escapeMarkdown(issue?.body.slice(0, 1000))}`
+        }
+        if (issue?.body && issue?.body?.length > 1000) {
+          message += `...\`\`\``
+        } else {
+          message += `\`\`\``
+        }
+        
+        if (issue?.labels && issue?.labels?.length > 0) {
+          message += `\n\n🔖 **Labels:** ${issue?.labels.map(label => `[${escapeMarkdown(label.name)}](${escapeMarkdown(label.url)})`).join(", ")}`
+        }
+      }
+
+      const issueResponse = await bot.sendMessage(Number(chatId), message, "MarkdownV2", true)
+      if (issueResponse) {
+        additionals["telegramResponse"] = issueResponse
+        additionals["message"] = message
+      }
+
+      break
+    case "issue_comment":
+      const comment = payload.comment
+      const commentAction = payload.action === "created" ? "added" : "removed";
+      var message: string = `💬 [Comment](${escapeMarkdown(comment?.html_url ?? "")}) ${commentAction} by **${sender}** on ${repo}\n`
+
+      if (commentAction === "added") {
+        if (comment?.body) {
+          message += `\n\n\`\`\`\n${escapeMarkdown(comment?.body.slice(0, 1000))}`
+        }
+  
+        if (comment?.body && comment?.body?.length > 1000) {
+          message += `...\`\`\``
+        } else {
+          message += `\`\`\``
+        }
+      }
+
+      const commentResponse = await bot.sendMessage(Number(chatId), message, "MarkdownV2", true)
+      if (commentResponse) {
+        additionals["telegramResponse"] = commentResponse
+        additionals["message"] = message
+      }
+      break
+    case "release":
+      const release = payload.release
+      var message: string = `🔄 Release [${escapeMarkdown(release?.tag_name ?? "")}](${escapeMarkdown(release?.html_url ?? "")}) ${payload.action ?? ""} by **${sender}** on ${repo}\n`
+
+      if (release?.body) {
+        message += `\n\n\`\`\`\n${escapeMarkdown(release?.body.slice(0, 1000))}`
+      }
+      const releaseResponse = await bot.sendMessage(Number(chatId), message, "MarkdownV2", true)
+      if (releaseResponse) {
+        additionals["telegramResponse"] = releaseResponse
+        additionals["message"] = message
+      }
+      break;
+    case "workflow_run":
+      break;
+    case "workflow_dispatch":
+      break;
+    case "workflow_job":
+      break;
+    default:
+      break;
   }
 
   return c.json({ ok: true, event: event, additionals: additionals})
@@ -272,6 +407,8 @@ app.post("/github/:chatId", async (c) => {
 //   return c.json({ ok: true, event: event, telegramResponse: response ?? null})
 
 // })
+
+
 
 function escapeMarkdown(text: string) {
   return text
