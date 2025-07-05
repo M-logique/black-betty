@@ -1,3 +1,9 @@
+## [1.0.1](https://github.com/M-logique/black-betty/compare/v1.0.0...v1.0.1) (2025-07-05)
+
+### 🚧 Refactors
+
+* Refactor GitHub webhook message formatting to use HTML instead of Markdown, enhancing message clarity and presentation ([73bc116](https://github.com/M-logique/black-betty/commit/73bc116a0721c3d50efc87f562758e40898f50f9))
+
 ## 1.0.0 (2025-07-05)
 
 ### 🚀 Features
