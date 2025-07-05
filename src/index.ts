@@ -355,9 +355,6 @@ app.post("/github/:botToken/:chatId", async (c) => {
       const release = payload.release
       var message: string = `🔄 Release [${escapeMarkdown(release?.tag_name ?? "")}](${escapeMarkdown(release?.html_url ?? "")}) ${payload.action ?? ""} by **${sender}** on ${repo}\n`
 
-      if (release?.body) {
-        message += `\n\n\`\`\`\n${escapeMarkdown(release?.body.slice(0, 1000))}`
-      }
       const releaseResponse = await bot.sendMessage(Number(chatId), message, "MarkdownV2", true)
       if (releaseResponse) {
         additionals["telegramResponse"] = releaseResponse
