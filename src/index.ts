@@ -214,39 +214,39 @@ app.post("/github/:botToken/:chatId", async (c) => {
   var sender: string = "Unknown"
 
   if (payload.sender && payload.sender?.html_url) {
-    sender = `[${escapeMarkdown(payload.sender?.login)}](${escapeMarkdown(payload.sender?.html_url)})`
+    sender = `<a href="${payload.sender?.html_url}">${escapeHtml(payload.sender?.login)}</a>`
   } else if (payload.sender) {
-    sender = escapeMarkdown(payload.sender?.login)
+    sender = escapeHtml(payload.sender?.login)
   }
 
-  const repo = `[${escapeMarkdown(payload.repository.full_name)}](${escapeMarkdown(payload.repository.html_url)})`
+  const repo = `<a href="${payload.repository.html_url}">${escapeHtml(payload.repository.full_name)}</a>`
 
   switch (event) {
     case 'push':
       if (payload.ref.includes("refs/tags")) break  ;
-      var message: string = `🚀 *Push to* **[${escapeMarkdown(payload.repository.full_name)}](${escapeMarkdown(payload.repository.html_url)})**\n`
+      var message: string = `🚀 <b>Push to</b> <b>${repo}</b>\n`
 
-      message += `👨‍🌾 *from*: **${sender}**\n\n`
+      message += `👨‍🌾 <b>from</b>: <b>${sender}</b>\n\n`
 
 
       const totalCommits: number = payload.commits?.length ?? 0
 
-      message += `total **${totalCommits}** commit${(totalCommits > 1 && "s") || ""} on **${payload.ref}**\n`
+      message += `total <b>${totalCommits}</b> commit${(totalCommits > 1 && "s") || ""} on <b>${escapeHtml(payload.ref)}</b>\n`
       if (payload.commits) {
         for (const commit of payload.commits.slice(0, 7)) {
-          message += ` \\- **[\\[${escapeMarkdown(commit.id.slice(0, 7))}\\]](${escapeMarkdown(commit.url)})**: [${escapeMarkdown(commit.author.username ?? commit.author.name)}] \`${escapeMarkdown(cutDownText(commit.message))}\`\n`
+          message += ` • <b><a href="${commit.url}">[${escapeHtml(commit.id.slice(0, 7))}]</a></b>: ${escapeHtml(commit.author.username ?? commit.author.name)} <code>${escapeHtml(cutDownText(commit.message))}</code>\n`
         }
       }
 
       if (totalCommits > 7) {
-        message += ` \\- And ${totalCommits - 7} more\n`
+        message += ` • And ${totalCommits - 7} more\n`
       }
 
       if (payload.compare) {
-        message += `\n 🔍 [Compare Changes](${payload.compare})`
+        message += `\n 🔍 <a href="${payload.compare}">Compare Changes</a>`
       }
       
-      const pushResponse = await bot.sendMessage(Number(chatId), message, "MarkdownV2", true)
+      const pushResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
       if (pushResponse) {
         additionals["telegramResponse"] = pushResponse
         additionals["message"] = message
@@ -258,8 +258,8 @@ app.post("/github/:botToken/:chatId", async (c) => {
       const idk: string = payload.action === "created" ? "to" : "from";
 
 
-      var message: string = `⭐ ${sender} **${action}** a star ${idk} ${repo}`
-      const starResponse = await bot.sendMessage(Number(chatId), message, "MarkdownV2", true)
+      var message: string = `⭐ ${sender} <b>${action}</b> a star ${idk} ${repo}`
+      const starResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
       if (starResponse) {
         additionals["telegramResponse"] = starResponse
         additionals["message"] = message
@@ -267,8 +267,8 @@ app.post("/github/:botToken/:chatId", async (c) => {
       break
 
       case "delete":
-        var message: string = `💀 *Delete* **${escapeMarkdown(payload.ref)}** by **${sender}**\n`
-        const deleteResponse = await bot.sendMessage(Number(chatId), message, "MarkdownV2", true)
+        var message: string = `💀 <b>Delete</b> <b>${escapeHtml(payload.ref)}</b> by <b>${sender}</b>\n`
+        const deleteResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
         if (deleteResponse) {
           additionals["telegramResponse"] = deleteResponse
           additionals["message"] = message
@@ -277,25 +277,27 @@ app.post("/github/:botToken/:chatId", async (c) => {
     
     case "pull_request":
       const pullRequest = payload.pull_request
-      const prUrl = escapeMarkdown(pullRequest?.html_url ?? "")
-      var message: string = `🔄 [Pull Request](${prUrl}) ${payload.action ?? ""} **${escapeMarkdown(pullRequest?.title ?? "")}** by **${sender}** on ${repo}\n`
+      const prUrl = pullRequest?.html_url ?? ""
+      var message: string = `🔄 <a href="${prUrl}">Pull Request</a> ${payload.action ?? ""} <b>${escapeHtml(pullRequest?.title ?? "")}</b> by <b>${sender}</b> on ${repo}\n`
 
       if (pullRequest?.body) {
-        message += `\n\n\`\`\`${escapeMarkdown(pullRequest?.body.slice(0, 1000))}\`\`\``
+        message += `\n\n<pre><code>${escapeHtml(pullRequest?.body.slice(0, 1000))}`
         if (pullRequest?.body.length > 1000) {
-          message += `\n\n[View Full Pull Request](${escapeMarkdown(pullRequest?.html_url ?? "")})`
+          message += `...</code></pre>\n\n<a href="${prUrl}">View Full Pull Request</a>`
+        } else {
+          message += `</code></pre>`
         }
       }
 
-      const pullRequestResponse = await bot.sendMessage(Number(chatId), message, "MarkdownV2", true)
+      const pullRequestResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
       if (pullRequestResponse) {
         additionals["telegramResponse"] = pullRequestResponse
         additionals["message"] = message
       }
       break
     case "fork":
-      var message: string = `🔄 ${sender} created a [fork](${escapeMarkdown(payload.forkee?.html_url ?? "")}) from ${repo}`
-      const forkResponse = await bot.sendMessage(Number(chatId), message, "MarkdownV2", true)
+      var message: string = `🔄 ${sender} created a <a href="${payload.forkee?.html_url ?? ""}">fork</a> from ${repo}`
+      const forkResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
       if (forkResponse) {
         additionals["telegramResponse"] = forkResponse
         additionals["message"] = message
@@ -303,25 +305,25 @@ app.post("/github/:botToken/:chatId", async (c) => {
       break
     case "issues":
       const issue = payload.issue
-      var message: string = `🔄 Issue [${escapeMarkdown(issue?.title ?? "")}](${escapeMarkdown(issue?.html_url ?? "")}) ${payload.action ?? ""} by **${sender}** on ${repo}\n`
+      var message: string = `🔄 Issue <a href="${issue?.html_url ?? ""}">${escapeHtml(issue?.title ?? "")}</a> ${payload.action ?? ""} by <b>${sender}</b> on ${repo}\n`
 
       
       if (payload.action === "opened") {
         if (issue?.body) {
-          message += `\n\n\`\`\`\n${escapeMarkdown(issue?.body.slice(0, 1000))}`
+          message += `\n\n<pre><code>${escapeHtml(issue?.body.slice(0, 1000))}`
         }
         if (issue?.body && issue?.body?.length > 1000) {
-          message += `...\`\`\``
+          message += `...</code></pre>`
         } else {
-          message += `\`\`\``
+          message += `</code></pre>`
         }
         
         if (issue?.labels && issue?.labels?.length > 0) {
-          message += `\n\n🔖 **Labels:** ${issue?.labels.map(label => `[${escapeMarkdown(label.name)}](${escapeMarkdown(label.url)})`).join(", ")}`
+          message += `\n\n🔖 <b>Labels:</b> ${issue?.labels.map(label => `<a href="${label.url}">${escapeHtml(label.name)}</a>`).join(", ")}`
         }
       }
 
-      const issueResponse = await bot.sendMessage(Number(chatId), message, "MarkdownV2", true)
+      const issueResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
       if (issueResponse) {
         additionals["telegramResponse"] = issueResponse
         additionals["message"] = message
@@ -331,21 +333,21 @@ app.post("/github/:botToken/:chatId", async (c) => {
     case "issue_comment":
       const comment = payload.comment
       const commentAction = payload.action === "created" ? "added" : "removed";
-      var message: string = `💬 [Comment](${escapeMarkdown(comment?.html_url ?? "")}) ${commentAction} by **${sender}** on ${repo}\n`
+      var message: string = `💬 <a href="${comment?.html_url ?? ""}">Comment</a> ${commentAction} by <b>${sender}</b> on ${repo}\n`
 
       if (commentAction === "added") {
         if (comment?.body) {
-          message += `\n\n\`\`\`\n${escapeMarkdown(comment?.body.slice(0, 1000))}`
+          message += `\n\n<pre><code>${escapeHtml(comment?.body.slice(0, 1000))}`
         }
   
         if (comment?.body && comment?.body?.length > 1000) {
-          message += `...\`\`\``
+          message += `...</code></pre>`
         } else {
-          message += `\`\`\``
+          message += `</code></pre>`
         }
       }
 
-      const commentResponse = await bot.sendMessage(Number(chatId), message, "MarkdownV2", true)
+      const commentResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
       if (commentResponse) {
         additionals["telegramResponse"] = commentResponse
         additionals["message"] = message
@@ -353,9 +355,9 @@ app.post("/github/:botToken/:chatId", async (c) => {
       break
     case "release":
       const release = payload.release
-      var message: string = `🔄 Release [${escapeMarkdown(release?.tag_name ?? "")}](${escapeMarkdown(release?.html_url ?? "")}) ${payload.action ?? ""} by **${sender}** on ${repo}\n`
+      var message: string = `🔄 Release <a href="${release?.html_url ?? ""}">${escapeHtml(release?.tag_name ?? "")}</a> ${payload.action ?? ""} by <b>${sender}</b> on ${repo}\n`
 
-      const releaseResponse = await bot.sendMessage(Number(chatId), message, "MarkdownV2", true)
+      const releaseResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
       if (releaseResponse) {
         additionals["telegramResponse"] = releaseResponse
         additionals["message"] = message
@@ -427,6 +429,15 @@ function escapeMarkdown(text: string) {
     .replace(/\}/g, '\\}')
     .replace(/\./g, '\\.')
     .replace(/!/g, '\\!');
+}
+
+function escapeHtml(text: string) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function cutDownText(text: string) {
