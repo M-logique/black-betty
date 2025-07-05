@@ -50,9 +50,12 @@ npm run deploy # Deploy to Cloudflare
 
 ```
 src/
-├── index.ts              # Main application
-├── types.ts              # TypeScript types
-└── handlers/             # Message handlers
+├── index.ts              # Main app + GitHub webhooks
+├── types/
+│   ├── telegram.ts       # Telegram types + bot class
+│   ├── cloudflare.ts     # Cloudflare bindings
+│   └── github.ts         # GitHub webhook types
+└── handlers/
     ├── start.ts          # /start command
     ├── inline-calculator.ts
     └── default-inline.ts
