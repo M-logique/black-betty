@@ -21,7 +21,13 @@ jobs:
         run: npm install
 
       - name: Deploy
-        run: npm run deploy
+        run: | 
+          export CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN
+          export CLOUDFLARE_EMAIL=$CLOUDFLARE_EMAIL
+          export TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN
+          export ALLOWED_USER_IDS=$ALLOWED_USER_IDS
+          export WEBHOOK_SECRET=$WEBHOOK_SECRET
+          npm run deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
