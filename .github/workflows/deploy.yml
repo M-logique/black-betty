@@ -35,13 +35,3 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           ALLOWED_USER_IDS: ${{ secrets.ALLOWED_USER_IDS }}
           WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
-
-      
-
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: worker.js
-          path: worker.js
-          retention-days: 1
-  
