@@ -1,0 +1,21 @@
+name: Continuous Integration (CI)
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - '**/*.ts'
+      - '**/*.js'
+      - '**/*.json'
+  workflow_dispatch:
+
+  
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
+    permissions: write-all
+    with: 
+      release: false
