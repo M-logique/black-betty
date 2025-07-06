@@ -1,4 +1,4 @@
-import { TelegramMessage, MessageHandler, TelegramBot} from "../types/telegram"
+import { TelegramMessage, MessageHandler, TelegramBot} from "../../types/telegram"
 
 export const startHandler: MessageHandler = {
   name: 'start',

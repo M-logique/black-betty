@@ -3,4 +3,3 @@ export interface CloudflareBindings {
     ALLOWED_USER_IDS: string
     WEBHOOK_SECRET: string
 }
-  
