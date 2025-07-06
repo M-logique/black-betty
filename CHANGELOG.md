@@ -1,3 +1,9 @@
+## [1.1.3](https://github.com/M-logique/black-betty/compare/v1.1.2...v1.1.3) (2025-07-06)
+
+### 🚧 Refactors
+
+* Simplify message handling in GitHub webhook by consolidating message variable usage and ensuring consistent formatting across event types ([f47c69f](https://github.com/M-logique/black-betty/commit/f47c69f3c96f4fcaecb1f8d8eb831fe0a35ec287))
+
 ## [1.1.2](https://github.com/M-logique/black-betty/compare/v1.1.1...v1.1.2) (2025-07-06)
 
 ### 🚧 Refactors
