@@ -1,3 +1,9 @@
+## [1.1.1](https://github.com/M-logique/black-betty/compare/v1.1.0...v1.1.1) (2025-07-06)
+
+### 🐛 Bug Fixes
+
+* Update asset message formatting in GitHub webhook handler to use bullet points for improved readability ([93dc0c9](https://github.com/M-logique/black-betty/commit/93dc0c94bff5c91032d4c1a188fbd8a23b046d92))
+
 ## [1.1.0](https://github.com/M-logique/black-betty/compare/v1.0.1...v1.1.0) (2025-07-06)
 
 ### 🚀 Features
