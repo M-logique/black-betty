@@ -120,7 +120,7 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
 
         if (payload.action === "released") {
           if (release?.assets && release?.assets?.length > 0) {
-            message += `\n\n🔖 <b>Assets:</b>\n`
+            message += `\n\n🔖 <b>Assets:</b>`
             for (const asset of release?.assets ?? []) {
               message += `\n• <a href="${asset.url}">${escapeHtml(asset.name)}</a>`
             }
