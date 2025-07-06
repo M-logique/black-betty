@@ -9,6 +9,7 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
     const chatId = c.req.param('chatId')
     const event = c.req.header('X-GitHub-Event') ?? ""
     var additionals: any = {}
+    var message: string = ""
     const payload: GithubPayload = await c.req.json()
     const bot = new TelegramBot(botToken, c)
   
@@ -24,63 +25,43 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
   
     switch (event) {
       case 'push':
-        if (payload.ref.includes("refs/tags")) break  ;
-        var message: string = `🚀 <b>Push to</b> <b>${repo}</b>\n`
-  
+        if (payload.ref.includes("refs/tags")) break;
+        message = `🚀 <b>Push to</b> <b>${repo}</b>\n`
         message += `👨‍🌾 <b>from</b>: <b>${sender}</b>\n\n`
-  
-  
+
         const totalCommits: number = payload.commits?.length ?? 0
-  
         message += `total <b>${totalCommits}</b> commit${(totalCommits > 1 && "s") || ""} on <b>${escapeHtml(payload.ref)}</b>\n`
+        
         if (payload.commits) {
           for (const commit of payload.commits.slice(0, 7)) {
             message += ` • <b><a href="${commit.url}">[${escapeHtml(commit.id.slice(0, 7))}]</a></b>: ${escapeHtml(commit.author.username ?? commit.author.name)} <code>${escapeHtml(cutDownText(commit.message))}</code>\n`
           }
         }
-  
+
         if (totalCommits > 7) {
           message += ` • And ${totalCommits - 7} more\n`
         }
-  
+
         if (payload.compare) {
           message += `\n 🔍 <a href="${payload.compare}">Compare Changes</a>`
-        }
-        
-        const pushResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-        if (pushResponse) {
-          additionals["telegramResponse"] = pushResponse
-          additionals["message"] = message
         }
         break
       
       case "star":
         const action: string = payload.action === "created" ? "added" : "removed";
         const idk: string = payload.action === "created" ? "to" : "from";
-  
-  
-        var message: string = `⭐ ${sender} <b>${action}</b> a star ${idk} ${repo}`
-        const starResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-        if (starResponse) {
-          additionals["telegramResponse"] = starResponse
-          additionals["message"] = message
-        }
+        message = `⭐ ${sender} <b>${action}</b> a star ${idk} ${repo}`
         break
   
-        case "delete":
-          var message: string = `💀 <b>Delete</b> <b>${escapeHtml(payload.ref)}</b> by <b>${sender}</b>\n`
-          const deleteResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-          if (deleteResponse) {
-            additionals["telegramResponse"] = deleteResponse
-            additionals["message"] = message
-          }
-          break
+      case "delete":
+        message = `💀 <b>Delete</b> <b>${escapeHtml(payload.ref)}</b> by <b>${sender}</b>\n`
+        break
       
       case "pull_request":
         const pullRequest = payload.pull_request
         const prUrl = pullRequest?.html_url ?? ""
-        var message: string = `🔄 <a href="${prUrl}">Pull Request</a> ${payload.action ?? ""} <b>${escapeHtml(pullRequest?.title ?? "")}</b> by <b>${sender}</b> on ${repo}\n`
-  
+        message = `🔄 <a href="${prUrl}">Pull Request</a> ${payload.action ?? ""} <b>${escapeHtml(pullRequest?.title ?? "")}</b> by <b>${sender}</b> on ${repo}\n`
+
         if (pullRequest?.body) {
           message += `\n\n<pre><code>${escapeHtml(pullRequest?.body.slice(0, 1000))}`
           if (pullRequest?.body.length > 1000) {
@@ -89,25 +70,15 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
             message += `</code></pre>`
           }
         }
-  
-        const pullRequestResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-        if (pullRequestResponse) {
-          additionals["telegramResponse"] = pullRequestResponse
-          additionals["message"] = message
-        }
         break
+
       case "fork":
-        var message: string = `🔄 ${sender} created a <a href="${payload.forkee?.html_url ?? ""}">fork</a> from ${repo}`
-        const forkResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-        if (forkResponse) {
-          additionals["telegramResponse"] = forkResponse
-          additionals["message"] = message
-        }
+        message = `🔄 ${sender} created a <a href="${payload.forkee?.html_url ?? ""}">fork</a> from ${repo}`
         break
+
       case "issues":
         const issue = payload.issue
-        var message: string = `🔄 Issue <a href="${issue?.html_url ?? ""}">${escapeHtml(issue?.title ?? "")}</a> ${payload.action ?? ""} by <b>${sender}</b> on ${repo}\n`
-  
+        message = `🔄 Issue <a href="${issue?.html_url ?? ""}">${escapeHtml(issue?.title ?? "")}</a> ${payload.action ?? ""} by <b>${sender}</b> on ${repo}\n`
         
         if (payload.action === "opened") {
           if (issue?.body) {
@@ -123,19 +94,13 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
             message += `\n\n🔖 <b>Labels:</b> ${issue?.labels.map(label => `<a href="${label.url}">${escapeHtml(label.name)}</a>`).join(", ")}`
           }
         }
-  
-        const issueResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-        if (issueResponse) {
-          additionals["telegramResponse"] = issueResponse
-          additionals["message"] = message
-        }
-  
         break
+
       case "issue_comment":
         const comment = payload.comment
         const commentAction = payload.action === "created" ? "added" : "removed";
-        var message: string = `💬 <a href="${comment?.html_url ?? ""}">Comment</a> ${commentAction} by <b>${sender}</b> on ${repo}\n`
-  
+        message = `💬 <a href="${comment?.html_url ?? ""}">Comment</a> ${commentAction} by <b>${sender}</b> on ${repo}\n`
+
         if (commentAction === "added") {
           if (comment?.body) {
             message += `\n\n<pre><code>${escapeHtml(comment?.body.slice(0, 1000))}`
@@ -147,17 +112,12 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
             message += `</code></pre>`
           }
         }
-  
-        const commentResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-        if (commentResponse) {
-          additionals["telegramResponse"] = commentResponse
-          additionals["message"] = message
-        }
         break
+
       case "release":
         const release = payload.release
-        var message: string = `🔄 Release <a href="${release?.html_url ?? ""}">${escapeHtml(release?.tag_name ?? "")}</a> ${payload.action ?? ""} by <b>${sender}</b> on ${repo}\n`
-  
+        message = `🔄 Release <a href="${release?.html_url ?? ""}">${escapeHtml(release?.tag_name ?? "")}</a> ${payload.action ?? ""} by <b>${sender}</b> on ${repo}\n`
+
         if (payload.action === "released") {
           if (release?.assets && release?.assets?.length > 0) {
             message += `\n\n🔖 <b>Assets:</b>\n`
@@ -166,13 +126,8 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
             }
           }
         }
-  
-        const releaseResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-        if (releaseResponse) {
-          additionals["telegramResponse"] = releaseResponse;
-          additionals["message"] = message;
-        }
         break;
+
       case "workflow_run":
         const workflowRun = payload.workflow_run
         if (workflowRun) {
@@ -181,7 +136,7 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
                              workflowRun.conclusion === 'cancelled' ? '🚫' : 
                              workflowRun.status === 'in_progress' ? '🔄' : '⏳'
           
-          var message: string = `${statusEmoji} <b>Workflow Run</b> <a href="${workflowRun.html_url}">${escapeHtml(workflowRun.name)}</a> ${workflowRun.status}`
+          message = `${statusEmoji} <b>Workflow Run</b> <a href="${workflowRun.html_url}">${escapeHtml(workflowRun.name)}</a> ${workflowRun.status}`
           
           if (workflowRun.conclusion) {
             message += ` (${workflowRun.conclusion})`
@@ -196,18 +151,13 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
             message += `\n💾 <b>Commit:</b> <a href="${workflowRun.head_commit.url}">${escapeHtml(workflowRun.head_commit.id.slice(0, 7))}</a>\n`
             message += `📝 <b>Message:</b> <code>${escapeHtml(cutDownText(workflowRun.head_commit.message))}</code>`
           }
-          
-          const workflowRunResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-          if (workflowRunResponse) {
-            additionals["telegramResponse"] = workflowRunResponse
-            additionals["message"] = message
-          }
         }
         break;
+
       case "workflow_dispatch":
         const workflowDispatch = payload.workflow_run
         if (workflowDispatch) {
-          var message: string = `🚀 <b>Workflow Dispatched</b> <a href="${workflowDispatch.html_url}">${escapeHtml(workflowDispatch.name)}</a> by <b>${sender}</b> on ${repo}\n`
+          message = `🚀 <b>Workflow Dispatched</b> <a href="${workflowDispatch.html_url}">${escapeHtml(workflowDispatch.name)}</a> by <b>${sender}</b> on ${repo}\n`
           message += `\n📋 <b>Branch:</b> <code>${escapeHtml(workflowDispatch.head_branch)}</code>\n`
           message += `🔢 <b>Run #:</b> ${workflowDispatch.run_number}\n`
           message += `🎯 <b>Event:</b> ${escapeHtml(workflowDispatch.event)}`
@@ -216,14 +166,9 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
             message += `\n\n💾 <b>Commit:</b> <a href="${workflowDispatch.head_commit.url}">${escapeHtml(workflowDispatch.head_commit.id.slice(0, 7))}</a>\n`
             message += `📝 <b>Message:</b> <code>${escapeHtml(cutDownText(workflowDispatch.head_commit.message))}</code>`
           }
-          
-          const workflowDispatchResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-          if (workflowDispatchResponse) {
-            additionals["telegramResponse"] = workflowDispatchResponse
-            additionals["message"] = message
-          }
         }
         break;
+
       case "workflow_job":
         const workflowJob = payload.workflow_job
         if (workflowJob) {
@@ -232,7 +177,7 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
                              workflowJob.conclusion === 'cancelled' ? '🚫' : 
                              workflowJob.status === 'in_progress' ? '🔄' : '⏳'
           
-          var message: string = `${statusEmoji} <b>Workflow Job</b> <a href="${workflowJob.html_url}">${escapeHtml(workflowJob.name)}</a> ${workflowJob.status}`
+          message = `${statusEmoji} <b>Workflow Job</b> <a href="${workflowJob.html_url}">${escapeHtml(workflowJob.name)}</a> ${workflowJob.status}`
           
           if (workflowJob.conclusion) {
             message += ` (${workflowJob.conclusion})`
@@ -257,14 +202,9 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
               message += ` ... and ${workflowJob.steps.length - 5} more steps`
             }
           }
-          
-          const workflowJobResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-          if (workflowJobResponse) {
-            additionals["telegramResponse"] = workflowJobResponse
-            additionals["message"] = message
-          }
         }
         break;
+
       case "pull_request_review":
         const review = payload.review
         if (review) {
@@ -272,7 +212,7 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
                              review.state === 'changes_requested' ? '❌' : 
                              review.state === 'commented' ? '💬' : '⏳'
           
-          var message: string = `${reviewEmoji} <b>Pull Request Review</b> <a href="${review.html_url}">${escapeHtml(review.state)}</a> by <b>${sender}</b> on ${repo}\n`
+          message = `${reviewEmoji} <b>Pull Request Review</b> <a href="${review.html_url}">${escapeHtml(review.state)}</a> by <b>${sender}</b> on ${repo}\n`
           
           if (review.body) {
             message += `\n\n<pre><code>${escapeHtml(review.body.slice(0, 1000))}`
@@ -282,19 +222,13 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
               message += `</code></pre>`
             }
           }
-          
-          const reviewResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-          if (reviewResponse) {
-            additionals["telegramResponse"] = reviewResponse
-            additionals["message"] = message
-          }
         }
         break;
   
       case "pull_request_review_comment":
         const reviewComment = payload.review_comment
         if (reviewComment) {
-          var message: string = `💬 <b>Review Comment</b> <a href="${reviewComment.html_url}">added</a> by <b>${sender}</b> on ${repo}\n`
+          message = `💬 <b>Review Comment</b> <a href="${reviewComment.html_url}">added</a> by <b>${sender}</b> on ${repo}\n`
           message += `\n📍 <b>File:</b> <code>${escapeHtml(reviewComment.path)}</code>\n`
           message += `📍 <b>Line:</b> ${reviewComment.position ?? 0}\n`
           
@@ -306,19 +240,13 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
               message += `</code></pre>`
             }
           }
-          
-          const reviewCommentResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-          if (reviewCommentResponse) {
-            additionals["telegramResponse"] = reviewCommentResponse
-            additionals["message"] = message
-          }
         }
         break;
   
       case "commit_comment":
         const commitComment = payload.commit_comment
         if (commitComment) {
-          var message: string = `💬 <b>Commit Comment</b> <a href="${commitComment.html_url}">added</a> by <b>${sender}</b> on ${repo}\n`
+          message = `💬 <b>Commit Comment</b> <a href="${commitComment.html_url}">added</a> by <b>${sender}</b> on ${repo}\n`
           message += `\n📍 <b>File:</b> <code>${escapeHtml(commitComment.path)}</code>\n`
           message += `📍 <b>Line:</b> ${commitComment.line}\n`
           
@@ -329,12 +257,6 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
             } else {
               message += `</code></pre>`
             }
-          }
-          
-          const commitCommentResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-          if (commitCommentResponse) {
-            additionals["telegramResponse"] = commitCommentResponse
-            additionals["message"] = message
           }
         }
         break;
@@ -347,7 +269,7 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
                              checkSuite.conclusion === 'neutral' ? '⚪' : 
                              checkSuite.status === 'in_progress' ? '🔄' : '⏳'
           
-          var message: string = `${statusEmoji} <b>Check Suite</b> ${checkSuite.status}`
+          message = `${statusEmoji} <b>Check Suite</b> ${checkSuite.status}`
           if (checkSuite.conclusion) {
             message += ` (${checkSuite.conclusion})`
           }
@@ -355,12 +277,6 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
           message += `\n🌿 <b>Branch:</b> <code>${escapeHtml(checkSuite.head_branch)}</code>\n`
           message += `💾 <b>Commit:</b> <a href="https://github.com/${payload.repository.full_name}/commit/${checkSuite.head_sha}">${escapeHtml(checkSuite.head_sha.slice(0, 7))}</a>\n`
           message += `🔢 <b>Checks:</b> ${checkSuite.latest_check_runs_count}`
-          
-          const checkSuiteResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-          if (checkSuiteResponse) {
-            additionals["telegramResponse"] = checkSuiteResponse
-            additionals["message"] = message
-          }
         }
         break;
   
@@ -372,7 +288,7 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
                              checkRun.conclusion === 'neutral' ? '⚪' : 
                              checkRun.status === 'in_progress' ? '🔄' : '⏳'
           
-          var message: string = `${statusEmoji} <b>Check Run</b> <a href="${checkRun.html_url}">${escapeHtml(checkRun.name)}</a> ${checkRun.status}`
+          message = `${statusEmoji} <b>Check Run</b> <a href="${checkRun.html_url}">${escapeHtml(checkRun.name)}</a> ${checkRun.status}`
           if (checkRun.conclusion) {
             message += ` (${checkRun.conclusion})`
           }
@@ -388,12 +304,6 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
               message += `...`
             }
           }
-          
-          const checkRunResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-          if (checkRunResponse) {
-            additionals["telegramResponse"] = checkRunResponse
-            additionals["message"] = message
-          }
         }
         break;
   
@@ -404,7 +314,7 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
                              payload.action === 'edited' ? '✏️' : 
                              payload.action === 'deleted' ? '📝' : '📝'
           
-          var message: string = `${actionEmoji} <b>Discussion</b> <a href="${discussion.html_url}">${escapeHtml(discussion.title)}</a> ${payload.action} by <b>${sender}</b> on ${repo}\n`
+          message = `${actionEmoji} <b>Discussion</b> <a href="${discussion.html_url}">${escapeHtml(discussion.title)}</a> ${payload.action} by <b>${sender}</b> on ${repo}\n`
           message += `\n📂 <b>Category:</b> ${escapeHtml(discussion.category.name)}\n`
           message += `💬 <b>Comments:</b> ${discussion.comments}`
           
@@ -416,12 +326,6 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
               message += `</code></pre>`
             }
           }
-          
-          const discussionResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-          if (discussionResponse) {
-            additionals["telegramResponse"] = discussionResponse
-            additionals["message"] = message
-          }
         }
         break;
   
@@ -432,7 +336,7 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
                              payload.action === 'edited' ? '✏️' : 
                              payload.action === 'deleted' ? '📝' : '📝'
           
-          var message: string = `${actionEmoji} <b>Discussion Comment</b> <a href="${discussionComment.html_url}">${payload.action}</a> by <b>${sender}</b> on ${repo}\n`
+          message = `${actionEmoji} <b>Discussion Comment</b> <a href="${discussionComment.html_url}">${payload.action}</a> by <b>${sender}</b> on ${repo}\n`
           
           if (payload.action === 'created' && discussionComment.body) {
             message += `\n\n<pre><code>${escapeHtml(discussionComment.body.slice(0, 1000))}`
@@ -441,12 +345,6 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
             } else {
               message += `</code></pre>`
             }
-          }
-          
-          const discussionCommentResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-          if (discussionCommentResponse) {
-            additionals["telegramResponse"] = discussionCommentResponse
-            additionals["message"] = message
           }
         }
         break;
@@ -458,18 +356,12 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
                              payload.action === 'updated' ? '🔄' : 
                              payload.action === 'deleted' ? '📝' : '📝'
           
-          var message: string = `${actionEmoji} <b>Package</b> <a href="${pkg.html_url}">${escapeHtml(pkg.name)}</a> ${payload.action} by <b>${sender}</b> on ${repo}\n`
+          message = `${actionEmoji} <b>Package</b> <a href="${pkg.html_url}">${escapeHtml(pkg.name)}</a> ${payload.action} by <b>${sender}</b> on ${repo}\n`
           message += `\n📦 <b>Type:</b> ${escapeHtml(pkg.package_type)}\n`
           message += `🏷️ <b>Version:</b> ${escapeHtml(pkg.version)}`
           
           if (pkg.description) {
             message += `\n\n📝 <b>Description:</b> ${escapeHtml(pkg.description)}`
-          }
-          
-          const packageResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-          if (packageResponse) {
-            additionals["telegramResponse"] = packageResponse
-            additionals["message"] = message
           }
         }
         break;
@@ -477,19 +369,13 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
       case "deployment":
         const deployment = payload.deployment
         if (deployment) {
-          var message: string = `🚀 <b>Deployment</b> <a href="${deployment.url}">${escapeHtml(deployment.task)}</a> created by <b>${sender}</b> on ${repo}\n`
+          message = `🚀 <b>Deployment</b> <a href="${deployment.url}">${escapeHtml(deployment.task)}</a> created by <b>${sender}</b> on ${repo}\n`
           message += `\n🌿 <b>Branch:</b> <code>${escapeHtml(deployment.ref)}</code>\n`
           message += `📝 <b>Environment:</b> ${escapeHtml(deployment.environment)}\n`
           message += `💾 <b>Commit:</b> <a href="https://github.com/${payload.repository.full_name}/commit/${deployment.sha}">${escapeHtml(deployment.sha.slice(0, 7))}</a>`
           
           if (deployment.description) {
             message += `\n\n📝 <b>Description:</b> ${escapeHtml(deployment.description)}`
-          }
-          
-          const deploymentResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-          if (deploymentResponse) {
-            additionals["telegramResponse"] = deploymentResponse
-            additionals["message"] = message
           }
         }
         break;
@@ -502,7 +388,7 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
                              deploymentStatus.state === 'pending' ? '⏳' : 
                              deploymentStatus.state === 'error' ? '🚨' : '🔄'
           
-          var message: string = `${statusEmoji} <b>Deployment Status</b> ${deploymentStatus.state} by <b>${sender}</b> on ${repo}\n`
+          message = `${statusEmoji} <b>Deployment Status</b> ${deploymentStatus.state} by <b>${sender}</b> on ${repo}\n`
           message += `\n📝 <b>Environment:</b> ${escapeHtml(deploymentStatus.environment)}`
           
           if (deploymentStatus.description) {
@@ -511,12 +397,6 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
           
           if (deploymentStatus.target_url) {
             message += `\n\n🔗 <a href="${deploymentStatus.target_url}">View Deployment</a>`
-          }
-          
-          const deploymentStatusResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-          if (deploymentStatusResponse) {
-            additionals["telegramResponse"] = deploymentStatusResponse
-            additionals["message"] = message
           }
         }
         break;
@@ -529,18 +409,12 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
                              payload.action === 'closed' ? '✅' : 
                              payload.action === 'opened' ? '🔓' : '📝'
           
-          var message: string = `${actionEmoji} <b>Milestone</b> <a href="${milestone.html_url}">${escapeHtml(milestone.title)}</a> ${payload.action} by <b>${sender}</b> on ${repo}\n`
+          message = `${actionEmoji} <b>Milestone</b> <a href="${milestone.html_url}">${escapeHtml(milestone.title)}</a> ${payload.action} by <b>${sender}</b> on ${repo}\n`
           message += `\n📝 <b>Number:</b> #${milestone.number}\n`
           message += `📊 <b>State:</b> ${escapeHtml(milestone.state)}`
           
           if (milestone.description) {
             message += `\n\n📝 <b>Description:</b> ${escapeHtml(milestone.description)}`
-          }
-          
-          const milestoneResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-          if (milestoneResponse) {
-            additionals["telegramResponse"] = milestoneResponse
-            additionals["message"] = message
           }
         }
         break;
@@ -553,18 +427,12 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
                              payload.action === 'closed' ? '✅' : 
                              payload.action === 'reopened' ? '🔓' : '📝'
           
-          var message: string = `${actionEmoji} <b>Project</b> <a href="${project.html_url}">${escapeHtml(project.name)}</a> ${payload.action} by <b>${sender}</b> on ${repo}\n`
+          message = `${actionEmoji} <b>Project</b> <a href="${project.html_url}">${escapeHtml(project.name)}</a> ${payload.action} by <b>${sender}</b> on ${repo}\n`
           message += `\n📝 <b>Number:</b> #${project.number}\n`
           message += `📊 <b>State:</b> ${escapeHtml(project.state)}`
           
           if (project.body) {
             message += `\n\n📝 <b>Description:</b> ${escapeHtml(project.body)}`
-          }
-          
-          const projectResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-          if (projectResponse) {
-            additionals["telegramResponse"] = projectResponse
-            additionals["message"] = message
           }
         }
         break;
@@ -577,17 +445,11 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
                              payload.action === 'moved' ? '🔄' : 
                              payload.action === 'converted' ? '🔄' : '📋'
           
-          var message: string = `${actionEmoji} <b>Project Card</b> ${payload.action} by <b>${sender}</b> on ${repo}\n`
+          message = `${actionEmoji} <b>Project Card</b> ${payload.action} by <b>${sender}</b> on ${repo}\n`
           message += `\n📋 <b>Column:</b> ${escapeHtml(projectCard.column_name)}`
           
           if (projectCard.note) {
             message += `\n\n📝 <b>Note:</b> ${escapeHtml(projectCard.note)}`
-          }
-          
-          const projectCardResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-          if (projectCardResponse) {
-            additionals["telegramResponse"] = projectCardResponse
-            additionals["message"] = message
           }
         }
         break;
@@ -599,13 +461,7 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
                              payload.action === 'edited' ? '✏️' : 
                              payload.action === 'moved' ? '🔄' : '📝'
           
-          var message: string = `${actionEmoji} <b>Project Column</b> <a href="${projectColumn.url}">${escapeHtml(projectColumn.name)}</a> ${payload.action} by <b>${sender}</b> on ${repo}`
-          
-          const projectColumnResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-          if (projectColumnResponse) {
-            additionals["telegramResponse"] = projectColumnResponse
-            additionals["message"] = message
-          }
+          message = `${actionEmoji} <b>Project Column</b> <a href="${projectColumn.url}">${escapeHtml(projectColumn.name)}</a> ${payload.action} by <b>${sender}</b> on ${repo}`
         }
         break;
   
@@ -617,7 +473,7 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
                                securityAdvisory.severity === 'medium' ? '⚡' : 
                                securityAdvisory.severity === 'low' ? 'ℹ️' : '📝'
           
-          var message: string = `${severityEmoji} <b>Security Advisory</b> ${payload.action} by <b>${sender}</b> on ${repo}\n`
+          message = `${severityEmoji} <b>Security Advisory</b> ${payload.action} by <b>${sender}</b> on ${repo}\n`
           message += `\n🚨 <b>Severity:</b> ${escapeHtml(securityAdvisory.severity)}\n`
           message += `📝 <b>Summary:</b> ${escapeHtml(securityAdvisory.summary)}`
           
@@ -626,12 +482,6 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
             if (securityAdvisory.description.length > 1000) {
               message += `...`
             }
-          }
-          
-          const securityAdvisoryResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-          if (securityAdvisoryResponse) {
-            additionals["telegramResponse"] = securityAdvisoryResponse
-            additionals["message"] = message
           }
         }
         break;
@@ -643,19 +493,13 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
                              payload.action === 'cancelled' ? '💔' : 
                              payload.action === 'edited' ? '✏️' : '💝'
           
-          var message: string = `${actionEmoji} <b>Sponsorship</b> ${payload.action} by <b>${sender}</b> on ${repo}\n`
+          message = `${actionEmoji} <b>Sponsorship</b> ${payload.action} by <b>${sender}</b> on ${repo}\n`
           message += `\n📝 <b>Sponsor:</b> ${escapeHtml(sponsorship.sponsor.login)}\n`
           message += `🎯 <b>Sponsored:</b> ${escapeHtml(sponsorship.sponsee.login)}\n`
           message += `💰 <b>Tier:</b> ${escapeHtml(sponsorship.tier.name)}`
           
           if (sponsorship.tier.monthly_price_in_dollars > 0) {
             message += ` ($${sponsorship.tier.monthly_price_in_dollars}/month)`
-          }
-          
-          const sponsorshipResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-          if (sponsorshipResponse) {
-            additionals["telegramResponse"] = sponsorshipResponse
-            additionals["message"] = message
           }
         }
         break;
@@ -667,15 +511,9 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
                              payload.action === 'edited' ? '✏️' : 
                              payload.action === 'deleted' ? '📝' : '📝'
           
-          var message: string = `${actionEmoji} <b>Team</b> <a href="${team.html_url}">${escapeHtml(team.name)}</a> ${payload.action} by <b>${sender}</b> on ${repo}\n`
+          message = `${actionEmoji} <b>Team</b> <a href="${team.html_url}">${escapeHtml(team.name)}</a> ${payload.action} by <b>${sender}</b> on ${repo}\n`
           message += `\n📝 <b>Privacy:</b> ${escapeHtml(team.privacy)}\n`
           message += `📝 <b>Description:</b> ${escapeHtml(team.description || 'No description')}`
-          
-          const teamResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-          if (teamResponse) {
-            additionals["telegramResponse"] = teamResponse
-            additionals["message"] = message
-          }
         }
         break;
   
@@ -686,79 +524,52 @@ export const githubHandler = new Hono<{ Bindings: CloudflareBindings }>().post("
                              payload.action === 'edited' ? '✏️' : 
                              payload.action === 'deleted' ? '📝' : '📝'
           
-          var message: string = `${actionEmoji} <b>Label</b> <span style="color: #${label.color}">${escapeHtml(label.name)}</span> ${payload.action} by <b>${sender}</b> on ${repo}`
+          message = `${actionEmoji} <b>Label</b> <span style="color: #${label.color}">${escapeHtml(label.name)}</span> ${payload.action} by <b>${sender}</b> on ${repo}`
           
           if (label.description) {
             message += `\n\n📝 <b>Description:</b> ${escapeHtml(label.description)}`
-          }
-          
-          const labelResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-          if (labelResponse) {
-            additionals["telegramResponse"] = labelResponse
-            additionals["message"] = message
           }
         }
         break;
   
       case "create":
-        var message: string = `🎉 <b>${escapeHtml(payload.ref_type || 'item')}</b> <code>${escapeHtml(payload.ref || 'unknown')}</code> created by <b>${sender}</b> on ${repo}`
-        
-        const createResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-        if (createResponse) {
-          additionals["telegramResponse"] = createResponse
-          additionals["message"] = message
-        }
+        message = `🎉 <b>${escapeHtml(payload.ref_type || 'item')}</b> <code>${escapeHtml(payload.ref || 'unknown')}</code> created by <b>${sender}</b> on ${repo}`
         break;
   
       case "gollum":
-        var message: string = `📚 <b>Wiki page</b> ${payload.action} by <b>${sender}</b> on ${repo}`
-        
-        const gollumResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-        if (gollumResponse) {
-          additionals["telegramResponse"] = gollumResponse
-          additionals["message"] = message
-        }
+        message = `📚 <b>Wiki page</b> ${payload.action} by <b>${sender}</b> on ${repo}`
         break;
   
       case "member":
         const member = payload.member
         if (member) {
           const actionEmoji = payload.action === 'added' ? '👋' : '👋'
-          var message: string = `${actionEmoji} <b>Member</b> <a href="${member.html_url}">${escapeHtml(member.login)}</a> ${payload.action} by <b>${sender}</b> on ${repo}`
-          
-          const memberResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-          if (memberResponse) {
-            additionals["telegramResponse"] = memberResponse
-            additionals["message"] = message
-          }
+          message = `${actionEmoji} <b>Member</b> <a href="${member.html_url}">${escapeHtml(member.login)}</a> ${payload.action} by <b>${sender}</b> on ${repo}`
         }
         break;
   
       case "public":
-        var message: string = `🌍 <b>Repository</b> ${repo} made public by <b>${sender}</b>`
-        
-        const publicResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-        if (publicResponse) {
-          additionals["telegramResponse"] = publicResponse
-          additionals["message"] = message
-        }
+        message = `🌍 <b>Repository</b> ${repo} made public by <b>${sender}</b>`
         break;
   
       case "watch":
         const actionEmoji = payload.action === 'started' ? '👀' : '📝'
-        var message: string = `${actionEmoji} <b>Repository</b> ${repo} ${payload.action} by <b>${sender}</b>`
-        
-        const watchResponse = await bot.sendMessage(Number(chatId), message, "HTML", true)
-        if (watchResponse) {
-          additionals["telegramResponse"] = watchResponse
-          additionals["message"] = message
-        }
+        message = `${actionEmoji} <b>Repository</b> ${repo} ${payload.action} by <b>${sender}</b>`
         break;
   
       default:
         // Log unknown events for debugging
         console.log(`Unhandled GitHub event: ${event}`)
         break;
+    }
+  
+    // Send message if it exists
+    if (message) {
+      const response = await bot.sendMessage(Number(chatId), message, "HTML", true)
+      if (response) {
+        additionals["telegramResponse"] = response
+        additionals["message"] = message
+      }
     }
   
     return c.json({ ok: true, event: event, additionals: additionals})
