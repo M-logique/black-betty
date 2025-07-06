@@ -1,3 +1,10 @@
+## [1.1.4](https://github.com/M-logique/black-betty/compare/v1.1.3...v1.1.4) (2025-07-06)
+
+### 🐛 Bug Fixes
+
+* Remove unnecessary newline in asset message formatting for GitHub webhook handler ([2467cf9](https://github.com/M-logique/black-betty/commit/2467cf90b4d94540e7cb2df13d1211aad0375ac5))
+* Update import paths for inline handlers to ensure correct module resolution ([efe1c5f](https://github.com/M-logique/black-betty/commit/efe1c5fa7f212ede53129c6c8d1d47948bb76552))
+
 ## [1.1.3](https://github.com/M-logique/black-betty/compare/v1.1.2...v1.1.3) (2025-07-06)
 
 ### 🚧 Refactors
