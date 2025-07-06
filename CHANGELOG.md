@@ -1,3 +1,9 @@
+## [1.1.2](https://github.com/M-logique/black-betty/compare/v1.1.1...v1.1.2) (2025-07-06)
+
+### 🚧 Refactors
+
+* Restructure GitHub webhook handling by removing inline calculator and default inline handlers, and updating import paths for main bot handlers ([1bcb954](https://github.com/M-logique/black-betty/commit/1bcb954be51b88e4b370657c9a50acc01d0353c0))
+
 ## [1.1.1](https://github.com/M-logique/black-betty/compare/v1.1.0...v1.1.1) (2025-07-06)
 
 ### 🐛 Bug Fixes
