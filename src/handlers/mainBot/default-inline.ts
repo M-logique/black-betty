@@ -1,4 +1,4 @@
-import { TelegramBot, InlineQueryHandler, TelegramInlineQueryResult, TelegramInlineQuery } from "../types/telegram";
+import { TelegramBot, InlineQueryHandler, TelegramInlineQueryResult, TelegramInlineQuery } from "../../types/telegram";
 
 export const defaultInlineHandler: InlineQueryHandler = {
   name: 'default-inline',
