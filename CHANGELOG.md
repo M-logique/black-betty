@@ -1,3 +1,9 @@
+## [1.1.0](https://github.com/M-logique/black-betty/compare/v1.0.1...v1.1.0) (2025-07-06)
+
+### 🚀 Features
+
+* Expand GitHub webhook event handling in Telegram bot to support additional events including workflow runs, job statuses, pull request reviews, discussions, and deployments, enhancing message formatting and user interaction ([a4a1649](https://github.com/M-logique/black-betty/commit/a4a16494a3d8f10dfb293feef8bb4c857c8b9ae0))
+
 ## [1.0.1](https://github.com/M-logique/black-betty/compare/v1.0.0...v1.0.1) (2025-07-05)
 
 ### 🚧 Refactors
