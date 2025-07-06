@@ -361,7 +361,7 @@ app.post("/github/:botToken/:chatId", async (c) => {
         if (release?.assets && release?.assets?.length > 0) {
           message += `\n\n🔖 <b>Assets:</b>\n`
           for (const asset of release?.assets ?? []) {
-            message += `\n\n🔖 <a href="${asset.url}">${escapeHtml(asset.name)}</a>`
+            message += `\n• <a href="${asset.url}">${escapeHtml(asset.name)}</a>`
           }
         }
       }
