@@ -45,7 +45,7 @@ export interface TelegramUpdate {
 
   message?: TelegramMessage
   channel_post?: TelegramMessage
-  
+
   inline_query?: TelegramInlineQuery
   chosen_inline_result?: TelegramChosenInlineResult
   callback_query?: TelegramCallbackQuery
@@ -78,6 +78,9 @@ export class TelegramBot {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     })
+    if (response.status > 299) {
+      console.log(`status code: ${response.status}`)
+    }
     return response.json()
   }
 

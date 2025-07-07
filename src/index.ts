@@ -83,14 +83,17 @@ app.route('/github', githubHandler)
 
 // Main webhook endpoint - Telegram will send updates here
 app.post('/webhook', async (c) => {
+  console.debug('[Webhook] Incoming request');
   try {
     // Validate webhook secret if provided
     const webhookSecret = c.req.header('X-Telegram-Bot-Api-Secret-Token')
     if (c.env.WEBHOOK_SECRET && webhookSecret !== c.env.WEBHOOK_SECRET) {
+      console.warn('[Webhook] Unauthorized: Invalid secret token');
       return c.json({ error: 'Unauthorized' }, 401)
     }
 
     const update: TelegramUpdate = await c.req.json()
+    console.debug('[Webhook] Parsed update:', JSON.stringify(update))
     const bot = new TelegramBot(c.env.TELEGRAM_BOT_TOKEN.trim(), c)
     const registry = new HandlerRegistry()
     
@@ -98,17 +101,22 @@ app.post('/webhook', async (c) => {
     await loadHandlers(registry)
     
     const allowedIds = c.env.ALLOWED_USER_IDS.split(',').map(id => parseInt(id.trim()))
+    console.debug('[Webhook] Allowed user IDs:', allowedIds)
     // Handle different types of updates
     if (update.message) {
       const message = update.message
-      if (message.chat.type !== 'private') return c.json({ ok: true })
-      
+      console.debug('[Webhook] Handling message update:', message)
+      if (message.chat.type !== 'private') {
+        console.debug('[Webhook] Ignoring non-private chat:', message.chat.type)
+        return c.json({ ok: true })
+      }
       
       try {
         await registry.processMessage(message, bot, allowedIds)
+        console.debug('[Webhook] Message processed successfully')
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error)
-        console.error('Message handler error:', error)
+        console.error('[Webhook] Message handler error:', error)
         
         // Send error message to user
         await bot.sendMessage(message.chat.id, 
@@ -120,13 +128,14 @@ app.post('/webhook', async (c) => {
     
     if (update.inline_query) {
       const query = update.inline_query
-      
+      console.debug('[Webhook] Handling inline_query update:', query)
       
       try {
         await registry.processInlineQuery(query, bot, allowedIds)
+        console.debug('[Webhook] Inline query processed successfully')
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error)
-        console.error('Inline query handler error:', error)
+        console.error('[Webhook] Inline query handler error:', error)
         
         // Answer inline query with error
         await bot.answerInlineQuery(query.id, [{
@@ -144,13 +153,14 @@ app.post('/webhook', async (c) => {
     
     if (update.callback_query) {
       const callbackQuery = update.callback_query
-      
+      console.debug('[Webhook] Handling callback_query update:', callbackQuery)
       
       try {
         await registry.processCallbackQuery(callbackQuery, bot, allowedIds)
+        console.debug('[Webhook] Callback query processed successfully')
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error)
-        console.error('Callback query handler error:', error)
+        console.error('[Webhook] Callback query handler error:', error)
         
         // Answer callback query with error
         await bot.answerCallbackQuery(callbackQuery.id, 
@@ -170,13 +180,14 @@ app.post('/webhook', async (c) => {
     if (update.chosen_inline_result) {
       // Handle when user selects an inline result
       // You can log this or perform actions
-      console.log('Chosen inline result:', update.chosen_inline_result)
+      console.debug('[Webhook] Chosen inline result:', update.chosen_inline_result)
     }
     
+    console.debug('[Webhook] Handler completed successfully')
     return c.json({ ok: true })
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
-    console.error('Webhook error:', error)
+    console.error('[Webhook] Webhook error:', error)
     
     // Return error response
     return c.json({ 
