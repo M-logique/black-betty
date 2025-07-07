@@ -41,7 +41,11 @@ export interface TelegramCallbackQuery {
 
 // Update type that includes inline queries and callback queries
 export interface TelegramUpdate {
+  update_id: number
+
   message?: TelegramMessage
+  channel_post?: TelegramMessage
+  
   inline_query?: TelegramInlineQuery
   chosen_inline_result?: TelegramChosenInlineResult
   callback_query?: TelegramCallbackQuery
