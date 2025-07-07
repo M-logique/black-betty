@@ -1,3 +1,9 @@
+## [1.2.0](https://github.com/M-logique/black-betty/compare/v1.1.4...v1.2.0) (2025-07-07)
+
+### 🚀 Features
+
+* Extend TelegramUpdate interface to include channel_post for improved message handling ([4ea19af](https://github.com/M-logique/black-betty/commit/4ea19afa2d93b845239833b8f52c3107db0251ee))
+
 ## [1.1.4](https://github.com/M-logique/black-betty/compare/v1.1.3...v1.1.4) (2025-07-06)
 
 ### 🐛 Bug Fixes
