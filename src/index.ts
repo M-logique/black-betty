@@ -91,7 +91,7 @@ app.post('/webhook', async (c) => {
     }
 
     const update: TelegramUpdate = await c.req.json()
-    const bot = new TelegramBot(c.env.TELEGRAM_BOT_TOKEN, c)
+    const bot = new TelegramBot(c.env.TELEGRAM_BOT_TOKEN.trim(), c)
     const registry = new HandlerRegistry()
     
     // Load handlers dynamically
