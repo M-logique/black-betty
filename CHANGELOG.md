@@ -1,3 +1,9 @@
+## [1.2.1](https://github.com/M-logique/black-betty/compare/v1.2.0...v1.2.1) (2025-07-07)
+
+### 🐛 Bug Fixes
+
+* Trim whitespace from Telegram bot token to prevent potential issues ([188e287](https://github.com/M-logique/black-betty/commit/188e28719d8206d773c80c09a65897cb6396f60f))
+
 ## [1.2.0](https://github.com/M-logique/black-betty/compare/v1.1.4...v1.2.0) (2025-07-07)
 
 ### 🚀 Features
