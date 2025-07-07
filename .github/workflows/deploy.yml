@@ -30,6 +30,6 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_BOT_TOKEN: "                ${{ secrets.TELEGRAM_BOT_TOKEN }}"
           ALLOWED_USER_IDS: ${{ secrets.ALLOWED_USER_IDS }}
           WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
